@@ -67,6 +67,14 @@ class Store:
             )
             return await cursor.fetchone()
 
+    async def latest(self, limit: int):
+        async with await self.connect() as conn:
+            cursor = await conn.execute(
+                "SELECT * FROM reports ORDER BY created_at DESC, id DESC LIMIT %s",
+                (limit,),
+            )
+            return await cursor.fetchall()
+
 
 def main() -> int:
     print("Migration started", flush=True)

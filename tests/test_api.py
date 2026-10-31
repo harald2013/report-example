@@ -15,7 +15,11 @@ from reports.config import Settings
 
 @pytest.fixture
 def dependencies():
-    store = SimpleNamespace(ready=AsyncMock(), get=AsyncMock(return_value=None))
+    store = SimpleNamespace(
+        ready=AsyncMock(),
+        get=AsyncMock(return_value=None),
+        latest=AsyncMock(return_value=[]),
+    )
     temporal = SimpleNamespace(
         start_workflow=AsyncMock(),
         get_workflow_handle=Mock(),
@@ -112,6 +116,45 @@ def test_completed_results_remain_available_without_temporal(client, dependencie
     dependencies[1].get_workflow_handle.assert_not_called()
 
 
+def test_list_returns_latest_reports_first(client, dependencies):
+    newest = {"id": str(uuid4()), "status": "completed", "result": {"sum": 3}}
+    older = {"id": str(uuid4()), "status": "completed", "result": {"sum": 60}}
+    dependencies[0].latest.return_value = [newest, older]
+    response = client.get("/reports", params={"limit": 2})
+    assert response.status_code == 200
+    assert response.json() == {"items": [newest, older]}
+    dependencies[0].latest.assert_awaited_once_with(2)
+    dependencies[1].get_workflow_handle.assert_not_called()
+
+
+def test_list_uses_default_limit(client, dependencies):
+    response = client.get("/reports")
+    assert response.status_code == 200
+    assert response.json() == {"items": []}
+    dependencies[0].latest.assert_awaited_once_with(20)
+
+
+@pytest.mark.parametrize("limit", ["0", "101", "-1", "abc"])
+def test_list_rejects_invalid_limit(client, dependencies, limit):
+    assert client.get("/reports", params={"limit": limit}).status_code == 422
+    dependencies[0].latest.assert_not_called()
+
+
+def test_list_requires_token(client, dependencies):
+    client.headers.pop("Authorization")
+    assert client.get("/reports").status_code == 401
+    client.headers["Authorization"] = "Bearer wrong-token"
+    assert client.get("/reports").status_code == 401
+    dependencies[0].latest.assert_not_called()
+
+
+def test_list_reports_unavailable_database(client, dependencies):
+    dependencies[0].latest.side_effect = ConnectionError("password")
+    response = client.get("/reports")
+    assert response.status_code == 503
+    assert "password" not in response.text
+
+
 def test_readiness_detects_database_failure(client, dependencies):
     dependencies[0].ready.side_effect = ConnectionError("password")
     assert client.get("/ready").status_code == 503
@@ -134,6 +177,7 @@ def test_public_ui_never_embeds_token_or_queries_dependencies(client, dependenci
     assert client.get("/ui/style.css").status_code == 200
     dependencies[0].ready.assert_not_called()
     dependencies[0].get.assert_not_called()
+    dependencies[0].latest.assert_not_called()
     dependencies[1].start_workflow.assert_not_called()
     dependencies[1].service_client.check_health.assert_not_called()
     assert client.get("/").status_code == 401

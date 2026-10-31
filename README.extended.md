@@ -56,6 +56,18 @@ Ein fehlender Worker lässt den Auftrag zunächst warten. Nach einer Stunde ende
 ein nicht abgeschlossener Workflow durch sein Ausführungszeitlimit. Datenbankfehler
 werden pro Aktivität bis zu zehnmal wiederholt.
 
+`GET /reports` listet die neuesten Berichte aus PostgreSQL, die neuesten zuerst,
+und erfordert wie `POST /reports` den API-Schlüssel. Die Antwort hat die Form
+`{"items": [...]}`; jeder Eintrag enthält dieselben Felder wie ein abgeschlossener
+Bericht von `GET /reports/{id}`. Der Status stammt aus der Datenbank, nicht aus
+Temporal. Der optionale Parameter `limit` (Standard 20, erlaubt 1 bis 100)
+begrenzt die Anzahl; andere Werte ergeben HTTP 422, eine nicht erreichbare
+Datenbank HTTP 503.
+
+```bash
+curl --fail 'http://127.0.0.1:18000/reports?limit=5'
+```
+
 POST erzeugt immer einen neuen Auftrag. Bei einem Verbindungsabbruch kann der
 Auftrag schon angenommen worden sein: erneutes POST kann daher einen weiteren
 Bericht erzeugen. Die API behauptet keine Exactly-once-Zustellung von HTTP-Anfragen.

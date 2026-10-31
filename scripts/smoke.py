@@ -43,6 +43,8 @@ def main():
             assert result["result"] == {
                 "count": 3, "sum": 60, "min": 10, "max": 30, "mean": 20,
             }, result
+            listed = request("/reports?limit=100")["items"]
+            assert result in listed, "Completed report missing from GET /reports"
             print(f"Report {job['id']}: completed; database result verified")
             return
         if result["status"] in {"failed", "timed_out", "terminated", "canceled"}:

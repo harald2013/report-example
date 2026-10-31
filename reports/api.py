@@ -6,7 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -104,6 +104,14 @@ def create_app(settings=None, store=None, temporal=None):
         except Exception:
             raise HTTPException(503, "Could not confirm report acceptance") from None
         return {"id": report_id, "status": "queued", "url": f"/reports/{report_id}"}
+
+    @app.get("/reports", dependencies=[Depends(authorize)])
+    async def list_reports(limit: int = Query(default=20, ge=1, le=100)):
+        try:
+            async with asyncio.timeout(10):
+                return {"items": await app.state.store.latest(limit)}
+        except Exception:
+            raise HTTPException(503, "Report listing unavailable") from None
 
     @app.get("/reports/{report_id}", dependencies=[Depends(authorize)])
     async def get_report(report_id: UUID):
