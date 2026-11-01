@@ -9,7 +9,7 @@ A UUID is the identifier Coolify uses in its API and MCP tools.
 
 URL: http://wh-coolify:8000/
 
-Port register: [Port blocks on wh-coolify](https://github.com/harald2013/idp/blob/main/.agents/infra/production/coolify.md#port-blocks-on-wh-coolify) in the idp repository
+Port register: [Port blocks on wh-coolify](https://github.com/harald2013/infrastructure/blob/main/coolify/port-register.md) in the infrastructure repository
 
 The port register lists the blocks of host and Serve ports reserved per project and service on this instance; the repository that operates the instance maintains it.
 
@@ -37,7 +37,7 @@ wh-coolify
 
 ### Destinations
 
-The UUID identifies the destination in the Coolify API and MCP tools; it is not the Docker network ID. The destination name and the Docker network name differ. The server's default destination `coolify` belongs to project IDP and is documented in the idp repository.
+The UUID identifies the destination in the Coolify API and MCP tools; it is not the Docker network ID. The destination name and the Docker network name differ. The server's default destination `coolify` belongs to project IDP and is documented in the infrastructure repository.
 
 | Name | UUID | Server | Docker network | Description |
 | --- | --- | --- | --- | --- |
@@ -86,3 +86,10 @@ PostgreSQL uses the persistent volume
 `1gvjtntleypij9lvcfdid5yk-report-example-postgres-data` (storage UUID
 `cgccmjqd5a0ebmcpw3fdrhnx`) at `/var/lib/postgresql/data`. PostgreSQL uses
 consistent container naming and must stop before replacement.
+
+## Application port assignments
+
+Within the delegated TCP range `15100`–`15119` on wh-coolify's Tailnet
+address, report-example uses Serve HTTPS `15100` for the API and `15101`
+for Temporal UI. Other ports remain available within this delegation after
+a live collision check. Internal container ports need no central reservation.
